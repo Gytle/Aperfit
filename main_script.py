@@ -13,6 +13,8 @@ import spectrum
 import simul_eeg
 
 
+plt.rcParams['svg.fonttype'] = 'none'
+
 fs = 500
 
 fake_eeg, norm_noise, aper_component, per_components = simul_eeg.fakeEEGsignal(
@@ -35,16 +37,19 @@ fig.suptitle("Fake EEG and its Components (first 5 s)", fontsize=14)
 axes[0].plot(t5, fake_eeg[mask])
 axes[0].set_ylabel("Amplitude")
 axes[0].set_title("Fake EEG")
+axes[0].set_ylim([-20,20])
 
 # 2) Aperiodic (fractal) component
 axes[1].plot(t5, aper_component[mask])
 axes[1].set_ylabel("Amplitude")
 axes[1].set_title("Aperiodic component")
+axes[1].set_ylim([-20,20])
 
 # 3) White Gaussian noise
 axes[2].plot(t5, norm_noise[mask])
 axes[2].set_ylabel("Amplitude")
 axes[2].set_title("Gaussian noise")
+axes[2].set_ylim([-20,20])
 
 # 4) Oscillatory components
 if per_components is not None:
@@ -59,6 +64,7 @@ else:
 
 axes[3].set_xlabel("Time (s)")
 axes[3].set_ylabel("Amplitude")
+axes[3].set_ylim([-20,20])
 
 plt.tight_layout()
 plt.show()

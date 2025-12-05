@@ -5,7 +5,7 @@ Created on Thu Dec  4 13:19:31 2025
 @author: Guillaume
 """
 
-from simul.simul_eeg import fakeEEGsignal
+from simul_eeg import fakeEEGsignal
 import hurst
 from hjorth import hjorth_parameters
 from spectrum import welch_power_spec
@@ -128,6 +128,9 @@ for iP in np.arange(autocorr_param.size):
     plt.plot(f,10*np.log10(spec_fit)+intercept)
     
     
+    
+    
+from fit_lorentzian import fit_lorentzian
 
 param_H = [res_hurst.slope,res_hurst.intercept]
 
@@ -154,9 +157,12 @@ for iP in np.arange(autocorr_param.size):
     intercept = np.nanmedian(l_pxx-l_spec_fit)
     f,pxx_aper = welch_power_spec(aper_component)
     
+    fitted_spec = fit_lorentzian(fake_eeg,fs=500)
+    
     plt.figure()
     plt.plot(f,10*np.log10(pxx))
     plt.plot(f,10*np.log10(pxx_aper))
     plt.plot(f,10*np.log10(spec_fit)+intercept)
+    plt.plot(f,fitted_spec)
 
 
