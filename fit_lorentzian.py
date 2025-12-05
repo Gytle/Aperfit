@@ -30,7 +30,7 @@ def fit_lorentzian(signal,fs):
     
     fitted_spec = lorentzian(fr,1,Fc)
     
-    idx_lowfr = (fr<1)
+    idx_lowfr = (fr<0.05*np.max(fr))
     idx_highfr = (fr>0.95*np.max(fr))
     
     l_pxx = 10*np.log10(pxx)
