@@ -8,7 +8,7 @@ Created on Wed Dec  3 11:08:29 2025
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
-from utils import hurst
+import hurst
 
 def welch_power_spec(X, fs=500, winsize=5, overlap=0.5):
     """

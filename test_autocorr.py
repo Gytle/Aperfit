@@ -6,9 +6,9 @@ Created on Thu Dec  4 13:19:31 2025
 """
 
 from simul.simul_eeg import fakeEEGsignal
-from utils import hurst
-from utils.hjorth import hjorth_parameters
-from plot.spectrum import welch_power_spec
+import hurst
+from hjorth import hjorth_parameters
+from spectrum import welch_power_spec
 import numpy as np
 from scipy.optimize import curve_fit
 from matplotlib import pyplot as plt
@@ -107,7 +107,7 @@ param_H = [res_hurst.slope,res_hurst.intercept]
 
 H_list = []
 lorentz_list = []
-for iP in [0,1,10]:#np.arange(autocorr_param.size):
+for iP in np.arange(autocorr_param.size):
     fake_eeg, norm_noise, aper_component, per_components = fakeEEGsignal(autocorr=autocorr_param[iP], sigma_n=0,osc=None)
     
     f,pxx = welch_power_spec(fake_eeg)
@@ -129,5 +129,34 @@ for iP in [0,1,10]:#np.arange(autocorr_param.size):
     
     
 
+param_H = [res_hurst.slope,res_hurst.intercept]
+
+H_list = []
+lorentz_list = []
+for iP in np.arange(autocorr_param.size):
+    fake_eeg, norm_noise, aper_component, per_components = fakeEEGsignal(autocorr=autocorr_param[iP], sigma_n=1,
+                                                                         osc=dict(alpha=[10,2,0.5],
+                                                                                  beta=[20,1,0.75],
+                                                                                  theta=[5,1,0.5],
+                                                                                  gamma=[150,1,0.5]))
+    
+    f,pxx = welch_power_spec(fake_eeg)
+    alpha, scales, fluct = hurst.DFA(fake_eeg)
+    spec_fit = lorentzian(f, 1, 10**(-3.5*alpha+3.5))
+    
+    l_pxx = 10*np.log10(pxx)
+    l_spec_fit = 10*np.log10(spec_fit)
+    
+    amp = (np.max(l_spec_fit)-np.min(l_spec_fit))/(np.max(l_pxx)-np.min(l_pxx))
+    spec_fit = lorentzian(f, amp, 10**(-3.5*alpha+3.5))
+    
+    l_spec_fit = 10*np.log10(spec_fit)
+    intercept = np.nanmedian(l_pxx-l_spec_fit)
+    f,pxx_aper = welch_power_spec(aper_component)
+    
+    plt.figure()
+    plt.plot(f,10*np.log10(pxx))
+    plt.plot(f,10*np.log10(pxx_aper))
+    plt.plot(f,10*np.log10(spec_fit)+intercept)
 
 

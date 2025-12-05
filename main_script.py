@@ -8,9 +8,9 @@ Created on Wed Dec  3 11:08:29 2025
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
-from utils import hurst
-from plot import spectrum
-from simul import simul_eeg
+import hurst
+import spectrum
+import simul_eeg
 
 
 fs = 500
