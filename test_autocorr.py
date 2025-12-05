@@ -136,8 +136,8 @@ param_H = [res_hurst.slope,res_hurst.intercept]
 
 H_list = []
 lorentz_list = []
-for iP in np.arange(autocorr_param.size):
-    fake_eeg, norm_noise, aper_component, per_components = fakeEEGsignal(autocorr=autocorr_param[iP], sigma_n=1,
+for iP in [0,1,2]:#np.arange(autocorr_param.size):
+    fake_eeg, norm_noise, aper_component, per_components = fakeEEGsignal(autocorr=autocorr_param[iP], sigma_g=2,sigma_n=1,
                                                                          osc=dict(alpha=[10,2,0.5],
                                                                                   beta=[20,1,0.75],
                                                                                   theta=[5,1,0.5],

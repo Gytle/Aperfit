@@ -39,10 +39,13 @@ def fit_lorentzian(signal,fs):
     # A = (np.nanmedian(pxx[idx_highfr])-np.nanmedian(pxx[idx_lowfr]))/(np.nanmedian(fitted_spec[idx_highfr])-np.nanmedian(fitted_spec[idx_lowfr]))
     
     
-    A = (np.nanmedian(l_fitted_spec[idx_highfr])-np.nanmedian(l_fitted_spec[idx_lowfr]))/(np.nanmedian(l_pxx[idx_highfr])-np.nanmedian(l_pxx[idx_lowfr]))
+    A = (np.nanmedian(l_pxx[idx_highfr])-np.nanmedian(l_pxx[idx_lowfr]))/(np.nanmedian(l_fitted_spec[idx_highfr])-np.nanmedian(l_fitted_spec[idx_lowfr]))
     
-    fitted_spec = lorentzian(fr,A,Fc)
-    l_fitted_spec = 10*np.log10(fitted_spec)
+    l_fitted_spec = l_fitted_spec*A
+    
+    
+    # fitted_spec = lorentzian(fr,A,Fc)
+    # l_fitted_spec = 10*np.log10(fitted_spec)
     
     intercept = np.nanmedian(l_pxx[idx_lowfr])-np.nanmedian(l_fitted_spec[idx_lowfr])
     
