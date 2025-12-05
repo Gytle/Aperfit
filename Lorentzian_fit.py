@@ -12,6 +12,11 @@ from genfakeeeg import plot_power_spec
 def lorentzian(f, A, fc):
     return A / (1 + (f / fc)**2)
 
+def avalanche(f,A,b,k):
+    return A / (k + f**b)
+    
+
+
 def fit_psd_lorentzian(fr, pxx, fmin = 1, fmax = None, plot = True):
 
     # Frequency range
