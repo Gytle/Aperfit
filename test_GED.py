@@ -113,7 +113,8 @@ import mne
 import os
 import matplotlib.pyplot as plt
 import GED
-from utils.hurst import DFA
+from hurst import DFA
+from hjorth import hjorth_parameters
 
 # datapath = 'C:\\Users\\Guillaume\\Downloads\\sub-032301_2\\sub-032301\\RSEEG'
 datapath = 'C:\\Users\\Guillaume\\Downloads\\sub-032301\\sub-032301'
@@ -134,17 +135,34 @@ win_len = 60*250
 
 signal_red = signal[:,:sig_len]
 
-tp = 100
+tp = 10000
 
-list_hurst = np.zeros((signal_red.shape[0],tp))
+# list_hurst = np.zeros((signal_red.shape[0],tp))
+list_hjorth = np.zeros((signal_red.shape[0],tp))
 for iCh in np.arange(signal_red.shape[0]):
     for iT in np.arange(tp):
-        tmp_sig = signal_red[iCh,np.arange(win_len)+tp]
+        tmp_sig = signal_red[iCh,np.arange(win_len)+iT]
         
-        alpha,_,_ = DFA(tmp_sig)
+        # alpha,_,_ = DFA(tmp_sig)
+        act,mob,complx = hjorth_parameters(tmp_sig)
         
-        list_hurst[iCh,iT] = alpha
+        # list_hurst[iCh,iT] = alpha
+        list_hjorth[iCh,iT] = np.log(complx).
         
+        
+        
+R = signal_red
+
+covR = R@R.T/(R.shape[1]-1)
+covR = 0.5 * (covR + covR.T)
+covR = GED.regularize(covR)
+
+S = list_hjorth
+
+covS = S@S.T/(S.shape[1]-1)
+covS = 0.5 * (covS + covS.T)
+
+W,A,W_norm,var_exp = GED.GED(covR,covS)
 
 
 
