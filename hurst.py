@@ -8,108 +8,108 @@ Created on Wed Dec  3 15:36:32 2025
 import numpy as np
 import scipy as sp
 from numpy.polynomial.polynomial import polyfit
-import pywt
+# import pywt
 
-def hurst_wavelet(
-    signal,
-    wavelet_name="db2",
-    min_level=1,
-    max_level=None,
-    model="fGn",
-):
-    """
-    Estimate the Hurst exponent H using a wavelet-variance method.
+# def hurst_wavelet(
+#     signal,
+#     wavelet_name="db2",
+#     min_level=1,
+#     max_level=None,
+#     model="fGn",
+# ):
+#     """
+#     Estimate the Hurst exponent H using a wavelet-variance method.
 
-    Parameters
-    ----------
-    signal : array_like
-        1D time series.
-    wavelet_name : str, optional
-        Name of the mother wavelet (e.g. "db2", "db4", "haar", "coif1", ...).
-    min_level : int, optional
-        Minimum decomposition level (scale) to include in the fit (>=1).
-    max_level : int or None, optional
-        Maximum decomposition level to include.
-        If None, it uses all levels allowed by the signal length.
-    model : {"fGn", "fBm"}, optional
-        Assumed underlying process:
-        - "fGn": fractional Gaussian noise  -> Var(W_j) ~ 2^{(2H-1)j}
-        - "fBm": fractional Brownian motion -> Var(W_j) ~ 2^{(2H+1)j}
-        This affects the mapping from slope -> H.
+#     Parameters
+#     ----------
+#     signal : array_like
+#         1D time series.
+#     wavelet_name : str, optional
+#         Name of the mother wavelet (e.g. "db2", "db4", "haar", "coif1", ...).
+#     min_level : int, optional
+#         Minimum decomposition level (scale) to include in the fit (>=1).
+#     max_level : int or None, optional
+#         Maximum decomposition level to include.
+#         If None, it uses all levels allowed by the signal length.
+#     model : {"fGn", "fBm"}, optional
+#         Assumed underlying process:
+#         - "fGn": fractional Gaussian noise  -> Var(W_j) ~ 2^{(2H-1)j}
+#         - "fBm": fractional Brownian motion -> Var(W_j) ~ 2^{(2H+1)j}
+#         This affects the mapping from slope -> H.
 
-    Returns
-    -------
-    H : float
-        Estimated Hurst exponent.
-    scales : ndarray
-        Scales (2^j) used in the regression.
-    variances : ndarray
-        Wavelet coefficient variances at each scale.
-    slope : float
-        Slope of log2(variance) vs log2(scale).
-    """
-    x = np.asarray(signal, dtype=float)
-    x = x[np.isfinite(x)]
-    N = x.size
-    if N < 16:
-        raise ValueError("Signal is too short for wavelet-based H estimation.")
+#     Returns
+#     -------
+#     H : float
+#         Estimated Hurst exponent.
+#     scales : ndarray
+#         Scales (2^j) used in the regression.
+#     variances : ndarray
+#         Wavelet coefficient variances at each scale.
+#     slope : float
+#         Slope of log2(variance) vs log2(scale).
+#     """
+#     x = np.asarray(signal, dtype=float)
+#     x = x[np.isfinite(x)]
+#     N = x.size
+#     if N < 16:
+#         raise ValueError("Signal is too short for wavelet-based H estimation.")
 
-    # 1. Discrete wavelet transform
-    wavelet = pywt.Wavelet(wavelet_name)
-    max_level_wt = pywt.dwt_max_level(N, wavelet.dec_len)
+#     # 1. Discrete wavelet transform
+#     wavelet = pywt.Wavelet(wavelet_name)
+#     max_level_wt = pywt.dwt_max_level(N, wavelet.dec_len)
 
-    if max_level is None:
-        max_level = max_level_wt
-    else:
-        max_level = min(max_level, max_level_wt)
+#     if max_level is None:
+#         max_level = max_level_wt
+#     else:
+#         max_level = min(max_level, max_level_wt)
 
-    if max_level < min_level:
-        raise ValueError("max_level < min_level; not enough levels for estimation.")
+#     if max_level < min_level:
+#         raise ValueError("max_level < min_level; not enough levels for estimation.")
 
-    coeffs = pywt.wavedec(x, wavelet, level=max_level)
+#     coeffs = pywt.wavedec(x, wavelet, level=max_level)
 
-    # coeffs = [cA_max, cD_max, cD_{max-1}, ..., cD_1]
-    # Put detail coeffs into natural order: [cD_1, cD_2, ..., cD_max]
-    detail_coeffs = coeffs[1:][::-1]
+#     # coeffs = [cA_max, cD_max, cD_{max-1}, ..., cD_1]
+#     # Put detail coeffs into natural order: [cD_1, cD_2, ..., cD_max]
+#     detail_coeffs = coeffs[1:][::-1]
 
-    variances = []
-    scales = []
+#     variances = []
+#     scales = []
 
-    # level = 1..max_level now correctly corresponds to scale 2^level
-    for level, cD in enumerate(detail_coeffs, start=1):
-        if level < min_level:
-            continue
-        if len(cD) < 4:
-            # skip very short coefficient vectors
-            continue
+#     # level = 1..max_level now correctly corresponds to scale 2^level
+#     for level, cD in enumerate(detail_coeffs, start=1):
+#         if level < min_level:
+#             continue
+#         if len(cD) < 4:
+#             # skip very short coefficient vectors
+#             continue
 
-        var = np.var(cD, ddof=1)
-        variances.append(var)
-        scales.append(2 ** level)
+#         var = np.var(cD, ddof=1)
+#         variances.append(var)
+#         scales.append(2 ** level)
 
-    variances = np.array(variances)
-    scales = np.array(scales)
+#     variances = np.array(variances)
+#     scales = np.array(scales)
 
-    if len(scales) < 2:
-        raise ValueError("Not enough valid scales to perform regression.")
+#     if len(scales) < 2:
+#         raise ValueError("Not enough valid scales to perform regression.")
 
-    # 2. Linear regression in log2-log2 space
-    log2_scales = np.log2(scales)
-    log2_vars = np.log2(variances)
+#     # 2. Linear regression in log2-log2 space
+#     log2_scales = np.log2(scales)
+#     log2_vars = np.log2(variances)
 
-    slope, intercept = np.polyfit(log2_scales, log2_vars, 1)
+#     slope, intercept = np.polyfit(log2_scales, log2_vars, 1)
 
-    # 3. Map slope -> H depending on model
-    # For fGn: Var ~ scale^{2H-1} => slope = 2H - 1 => H = (slope + 1)/2
-    # For fBm: Var ~ scale^{2H+1} => slope = 2H + 1 => H = (slope - 1)/2
-    if model.lower() == "fgn":
-        H = (slope + 1.0) / 2.0
-    elif model.lower() == "fbm":
-        H = (slope - 1.0) / 2.0
-    else:
-        raise ValueError("model must be 'fGn' or 'fBm'.")
+#     # 3. Map slope -> H depending on model
+#     # For fGn: Var ~ scale^{2H-1} => slope = 2H - 1 => H = (slope + 1)/2
+#     # For fBm: Var ~ scale^{2H+1} => slope = 2H + 1 => H = (slope - 1)/2
+#     if model.lower() == "fgn":
+#         H = (slope + 1.0) / 2.0
+#     elif model.lower() == "fbm":
+#         H = (slope - 1.0) / 2.0
+#     else:
+#         raise ValueError("model must be 'fGn' or 'fBm'.")
 
-    return H, scales, variances, slope
+#     return H, scales, variances, slope
 
 def DFA(signal, scales=None, order=1, overlap=False, min_scale=4, max_scale=None, n_scales=20):
     """

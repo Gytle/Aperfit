@@ -9,22 +9,34 @@ import numpy as np
 import scipy as sp
 from hurst import DFA
 from spectrum import welch_power_spec
+from hjorth import hjorth_parameters
 
 
 
 def lorentzian(f,A,Fc):
     return A/(1+(f/Fc)**2)
     
-def find_Fc(signal):
+def find_Fc_hurst(signal,fs):
     alpha,_,_ = DFA(signal)
     
-    Fc = 10**(-3.5*alpha+3.5)
+    Fc = (10**(-5.5*np.log10(alpha)-2.25))*fs
+    
+    return Fc
+ 
+def find_Fc_hjorth(signal,fs):
+    act,mob,cx = hjorth_parameters(signal,sampling_rate=fs)
+    
+    Fc = (10**(-2.959*np.sqrt(np.log10(cx))+0.369))*fs
     
     return Fc
 
-def fit_lorentzian(signal,fs):
+def fit_lorentzian(signal,fs,method='hjorth'):
     
-    Fc = find_Fc(signal)
+    if method=='hjorth':
+        Fc = find_Fc_hjorth(signal,fs=fs)
+    elif method=='hurst':
+        Fc = find_Fc_hurst(signal,fs=fs)
+        
     
     fr,pxx = welch_power_spec(signal,fs)
     

@@ -147,7 +147,7 @@ for iCh in np.arange(signal_red.shape[0]):
         act,mob,complx = hjorth_parameters(tmp_sig)
         
         # list_hurst[iCh,iT] = alpha
-        list_hjorth[iCh,iT] = np.log(complx).
+        list_hjorth[iCh,iT] = np.log(complx)
         
         
         

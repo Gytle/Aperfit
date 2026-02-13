@@ -15,8 +15,8 @@ from matplotlib import pyplot as plt
 import scipy as sp
 
 
-def lorentzian(f, A, fc):
-    return A / (1 + (f / fc)**2)
+def lorentzian(f, A, fc, b):
+    return (A / (1 + (f / fc)**2))+b
 
 def avalanche(f,A,b,k):
     return A / (k + f**b)
@@ -27,26 +27,28 @@ def fit_psd_lorentzian(fr, pxx, fmin = 1, fmax = None, plot = True):
     # Frequency range
     mask = fr > 0
     mask &= fr >= fmin
-    if fmax is not None:
-        mask &= fr <= fmax
+    if fmax is None:
+        fmax = fr[-1]
+    mask &= fr < fmax
 
     f_fit = fr[mask]
     P_fit = pxx[mask]
 
     A0 = np.max(P_fit)
     fc0 = f_fit[np.argmax(P_fit)] 
+    b0 = 0
 
     # Fit
     popt, pcov = curve_fit(
         lorentzian,
         f_fit,
         P_fit,
-        p0=[A0, fc0],
-        bounds=([0, 0], [np.inf, np.inf])
+        p0=[A0, fc0, b0],
+        bounds=([0, 0, 0], [np.inf, np.inf, np.inf])
     )
 
-    A_fit, fc_fit = popt
-    L_fit = lorentzian(f_fit, A_fit, fc_fit)
+    A_fit, fc_fit, b_fit = popt
+    L_fit = lorentzian(f_fit, A_fit, fc_fit, b_fit)
 
     if plot:
         plt.figure(figsize=(7,4))
@@ -60,33 +62,39 @@ def fit_psd_lorentzian(fr, pxx, fmin = 1, fmax = None, plot = True):
 
     return f_fit, P_fit, L_fit, A_fit, fc_fit
 
-autocorr_param = np.arange(0.80,0.99,0.01)
+fs = 100
+
+autocorr_param = np.log(np.linspace(np.exp(0.1),np.exp(0.99),100))
 
 H_list = []
 Hjorth_list = []
 lorentz_list = []
 for iP in np.arange(autocorr_param.size):
-    fake_eeg, norm_noise, aper_component, per_components = fakeEEGsignal(autocorr=autocorr_param[iP], sigma_n=0,osc=None)
+    fake_eeg, norm_noise, aper_component, per_components = fakeEEGsignal(fs=fs,autocorr=autocorr_param[iP], sigma_n=0,osc=None)
 
     alpha, scales, fluct = hurst.DFA(fake_eeg)
     
-    act,mob,cx = hjorth_parameters(fake_eeg,sampling_rate=500)
+    act,mob,cx = hjorth_parameters(fake_eeg,sampling_rate=fs)
     
-    f,pxx = welch_power_spec(fake_eeg)
+    f,pxx = welch_power_spec(fake_eeg,fs=fs)
     
-    f_fit, P_fit, L_fit, A_fit, fc_fit = fit_psd_lorentzian(f, pxx, plot=False)
+    f_fit, P_fit, L_fit, A_fit, fc_fit = fit_psd_lorentzian(f, pxx, fmin=0.1,plot=False)
     
     H_list.append(alpha)
     Hjorth_list.append(cx)
     lorentz_list.append(fc_fit)
     
-res_hurst = sp.stats.linregress(np.array(H_list),np.log10(np.array(lorentz_list)))
-res_hjorth = sp.stats.linregress(np.array(Hjorth_list),np.log10(np.array(lorentz_list)))
+Hjorth_ar = np.sqrt(np.log10(np.array(Hjorth_list)))
+Hurst_ar = np.log10(np.array(H_list))
+lorentz_ar = np.log10(np.array(lorentz_list)/fs)
+
+res_hurst = sp.stats.linregress(Hurst_ar,lorentz_ar)
+res_hjorth = sp.stats.linregress(Hjorth_ar,lorentz_ar)
     
 plt.figure()
-plt.scatter(np.array(H_list),np.log10(np.array(lorentz_list)))
-plt.plot(np.array(H_list),np.array(H_list)*res_hurst.slope+res_hurst.intercept,'k--')
-plt.text(np.nanmean(np.array(H_list)),np.nanmean(np.log(np.array(lorentz_list))),r'Fc=%02.03f*H+%02.03f'%(res_hurst.slope,res_hurst.intercept))
+plt.scatter(Hurst_ar,lorentz_ar)
+plt.plot(Hurst_ar,Hurst_ar*res_hurst.slope+res_hurst.intercept,'k--')
+plt.text(np.nanmean(Hurst_ar),np.nanmean(lorentz_ar),r'Fc=%02.03f*H+%02.03f'%(res_hurst.slope,res_hurst.intercept))
 plt.xlabel('Hurst exponent')
 plt.ylabel('log10(lorentz Fc)')
 
@@ -94,75 +102,82 @@ print(r'Final relation H x lorentzian fit: Fc=%02.03f*H+%02.03f'%(res_hurst.slop
 
 
 plt.figure()
-plt.scatter(np.array(Hjorth_list),np.log10(np.array(lorentz_list)))
-plt.plot(np.array(Hjorth_list),np.array(Hjorth_list)*res_hjorth.slope+res_hjorth.intercept,'k--')
-plt.text(np.nanmean(np.array(Hjorth_list)),np.nanmean(np.log(np.array(lorentz_list))),r'Fc=%02.03f*H+%02.03f'%(res_hjorth.slope,res_hjorth.intercept))
+plt.scatter(Hjorth_ar,lorentz_ar)
+plt.plot(Hjorth_ar,Hjorth_ar*res_hjorth.slope+res_hjorth.intercept,'k--')
+plt.text(np.nanmean(Hjorth_ar),np.nanmean(lorentz_ar),r'Fc=%02.03f*H+%02.03f'%(res_hjorth.slope,res_hjorth.intercept))
 plt.xlabel('Hjorth complexity')
 plt.ylabel('log10(lorentz Fc)')
 
 print(r'Final relation Hjorth x lorentzian fit: Fc=%02.03f*H+%02.03f'%(res_hjorth.slope,res_hjorth.intercept))
 
 
-param_H = [res_hurst.slope,res_hurst.intercept]
+# param_H = [res_hurst.slope,res_hurst.intercept]
 
-H_list = []
-lorentz_list = []
-for iP in np.arange(autocorr_param.size):
-    fake_eeg, norm_noise, aper_component, per_components = fakeEEGsignal(autocorr=autocorr_param[iP], sigma_n=0,osc=None)
+# H_list = []
+# lorentz_list = []
+# for iP in np.arange(autocorr_param.size):
+#     fake_eeg, norm_noise, aper_component, per_components = fakeEEGsignal(autocorr=autocorr_param[iP], sigma_n=0,osc=None)
     
-    f,pxx = welch_power_spec(fake_eeg)
-    alpha, scales, fluct = hurst.DFA(fake_eeg)
-    spec_fit = lorentzian(f, 1, 10**(-3.5*alpha+3.5))
+#     f,pxx = welch_power_spec(fake_eeg)
+#     alpha, scales, fluct = hurst.DFA(fake_eeg)
+#     spec_fit = lorentzian(f, 1, 10**(-3.5*alpha+3.5))
     
-    l_pxx = 10*np.log10(pxx)
-    l_spec_fit = 10*np.log10(spec_fit)
+#     l_pxx = 10*np.log10(pxx)
+#     l_spec_fit = 10*np.log10(spec_fit)
     
-    amp = (np.max(l_spec_fit)-np.min(l_spec_fit))/(np.max(l_pxx)-np.min(l_pxx))
-    spec_fit = lorentzian(f, amp, 10**(-3.5*alpha+3.5))
+#     amp = (np.max(l_spec_fit)-np.min(l_spec_fit))/(np.max(l_pxx)-np.min(l_pxx))
+#     spec_fit = lorentzian(f, amp, 10**(-3.5*alpha+3.5))
     
-    l_spec_fit = 10*np.log10(spec_fit)
-    intercept = np.nanmedian(l_pxx-l_spec_fit)
+#     l_spec_fit = 10*np.log10(spec_fit)
+#     intercept = np.nanmedian(l_pxx-l_spec_fit)
     
-    plt.figure()
-    plt.plot(f,10*np.log10(pxx))
-    plt.plot(f,10*np.log10(spec_fit)+intercept)
+#     plt.figure()
+#     plt.plot(f,10*np.log10(pxx))
+#     plt.plot(f,10*np.log10(spec_fit)+intercept)
     
     
     
     
 from fit_lorentzian import fit_lorentzian
 
+
+
+autocorr_param = np.log(np.linspace(np.exp(0.1),np.exp(0.99),10))
+
 param_H = [res_hurst.slope,res_hurst.intercept]
 
 H_list = []
 lorentz_list = []
-for iP in [0,1,2]:#np.arange(autocorr_param.size):
-    fake_eeg, norm_noise, aper_component, per_components = fakeEEGsignal(autocorr=autocorr_param[iP], sigma_g=2,sigma_n=1,
+for iP in np.arange(autocorr_param.size):
+    fake_eeg, norm_noise, aper_component, per_components = fakeEEGsignal(fs=fs,autocorr=autocorr_param[iP], sigma_g=2,sigma_n=1,
                                                                          osc=dict(alpha=[10,2,0.5],
                                                                                   beta=[20,1,0.75],
                                                                                   theta=[5,1,0.5],
                                                                                   gamma=[150,1,0.5]))
     
-    f,pxx = welch_power_spec(fake_eeg)
+    f,pxx = welch_power_spec(fake_eeg,fs=fs)
     alpha, scales, fluct = hurst.DFA(fake_eeg)
-    spec_fit = lorentzian(f, 1, 10**(-3.5*alpha+3.5))
+    spec_fit = lorentzian(f, 1, 10**(-3.5*alpha+3.5),0)
     
     l_pxx = 10*np.log10(pxx)
     l_spec_fit = 10*np.log10(spec_fit)
     
     amp = (np.max(l_spec_fit)-np.min(l_spec_fit))/(np.max(l_pxx)-np.min(l_pxx))
-    spec_fit = lorentzian(f, amp, 10**(-3.5*alpha+3.5))
+    spec_fit = lorentzian(f, amp, 10**(-3.5*alpha+3.5),0)
     
     l_spec_fit = 10*np.log10(spec_fit)
     intercept = np.nanmedian(l_pxx-l_spec_fit)
-    f,pxx_aper = welch_power_spec(aper_component)
+    f,pxx_aper = welch_power_spec(aper_component,fs=fs)
     
-    fitted_spec = fit_lorentzian(fake_eeg,fs=500)
+    fitted_spec = fit_lorentzian(fake_eeg,fs=fs)
+    
+    # plt.figure()
+    # plt.plot(f,10*np.log10(pxx))
+    # plt.plot(f,10*np.log10(pxx_aper))
+    # plt.plot(f,10*np.log10(spec_fit)+intercept)
+    # plt.plot(f,fitted_spec)
     
     plt.figure()
-    plt.plot(f,10*np.log10(pxx))
-    plt.plot(f,10*np.log10(pxx_aper))
-    plt.plot(f,10*np.log10(spec_fit)+intercept)
-    plt.plot(f,fitted_spec)
+    plt.plot(f,10*np.log10(pxx)-fitted_spec)
 
 

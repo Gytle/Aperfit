@@ -13,6 +13,7 @@ import spectrum
 import simul_eeg
 
 
+
 plt.rcParams['svg.fonttype'] = 'none'
 
 fs = 500
@@ -68,6 +69,55 @@ axes[3].set_ylim([-20,20])
 
 plt.tight_layout()
 plt.show()
+
+
+f,pxx_full = spectrum.welch_power_spec(fake_eeg,fs=500)
+f,pxx_aper = spectrum.welch_power_spec(aper_component,fs=500)
+f,pxx_noise = spectrum.welch_power_spec(norm_noise,fs=500)
+f,pxx_per = spectrum.welch_power_spec(per_components[0,:],fs=500)
+
+
+fig, axes = plt.subplots(4, 1, figsize=(6, 8), sharex=True)
+fig.suptitle("Fake EEG and its Components (first 5 s)", fontsize=14)
+
+# 1) Full fake EEG
+axes[0].plot(f, 10*np.log10(pxx_full))
+axes[0].set_ylabel("Amplitude")
+axes[0].set_title("Fake EEG")
+# axes[0].set_ylim([-20,20])
+
+# 2) Aperiodic (fractal) component
+axes[1].plot(f, 10*np.log10(pxx_aper))
+axes[1].set_ylabel("Amplitude")
+axes[1].set_title("Aperiodic component")
+# axes[1].set_ylim([-20,20])
+
+# 3) White Gaussian noise
+axes[2].plot(f, 10*np.log10(pxx_noise))
+axes[2].set_ylabel("Amplitude")
+axes[2].set_title("Gaussian noise")
+# axes[2].set_ylim([-20,20])
+
+# 4) Oscillatory components
+if per_components is not None:
+    # per_components has shape (n_osc, n_samples)
+    axes[3].plot(f, 10*np.log10(pxx_per))
+    axes[3].legend(loc="upper right")
+    axes[3].set_title("Oscillatory components")
+else:
+    axes[3].text(0.5, 0.5, "No oscillatory components",
+                 ha="center", va="center", transform=axes[3].transAxes)
+
+axes[3].set_xlabel("Time (s)")
+axes[3].set_ylabel("Amplitude")
+# axes[3].set_xlim([-20,20])
+
+plt.tight_layout()
+plt.show()
+
+
+
+
 
 fs = 500
 fake_eeg, norm_noise, aper_component, per_components = simul_eeg.fakeEEGsignal(
